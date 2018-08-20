@@ -31,9 +31,9 @@ public class MainActivity extends AppCompatActivity {
     private SurfaceView mCameraView;
     private TextView mTextView;
     private CameraSource mCameraSource;
-    private final int cameraPermissionID = 101;
     private TextToSpeech textToSpeech;
     private TextRecognizer textRecognizer;
+    private CameraPermission cameraPermission;
 
 
     @Override
@@ -41,6 +41,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        cameraPermission = new CameraPermission(this);
         mCameraView = findViewById(R.id.cameraView);
         mTextView = findViewById(R.id.text_view);
 
@@ -48,7 +49,7 @@ public class MainActivity extends AppCompatActivity {
         textToSpeech = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
             @Override
             public void onInit(int status) {
-                if(status != TextToSpeech.ERROR) {
+                if (status != TextToSpeech.ERROR) {
                     textToSpeech.setLanguage(Locale.US);
                 }
             }
@@ -56,15 +57,6 @@ public class MainActivity extends AppCompatActivity {
 
 
         startCamera();
-    }
-
-    /**
-     * Check whether camera permission is granted
-     * @return true if camera permission is granted, false otherwise
-     */
-    private boolean checkPermission() {
-        return ActivityCompat.checkSelfPermission(getApplicationContext(),
-                Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
     }
 
 
@@ -76,12 +68,11 @@ public class MainActivity extends AppCompatActivity {
      */
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        if (requestCode == cameraPermission.getCameraPermissionID()) {
 
-        if(requestCode == cameraPermissionID){
+            if (cameraPermission.checkHasCameraPermission()) {
 
-            if(checkPermission()) {
-
-                Log.i("onRequestResult","Permission has been granted");
+                Log.i("onRequestResult", "Permission has been granted");
                 try {
                     mCameraSource.start(mCameraView.getHolder());
                 } catch (IOException e) {
@@ -153,18 +144,19 @@ public class MainActivity extends AppCompatActivity {
             mCameraView.getHolder().addCallback(new SurfaceHolder.Callback() {
                 @Override
                 public void surfaceCreated(SurfaceHolder holder) {
-                    if(!checkPermission()){
-                        Log.i("surfaceCreated","Permission request sent");
-                        ActivityCompat.requestPermissions(MainActivity.this,
-                                new String[]{Manifest.permission.CAMERA}, cameraPermissionID);
-                    }
-                    else {
+                    if(cameraPermission.checkHasCameraPermission()){
+
                         try {
                             mCameraSource.start(mCameraView.getHolder());
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
 
+                    }
+                    else {
+
+                        Log.i("surfaceCreated","Permission request sent");
+                        cameraPermission.requestCameraPermission();
                     }
                 }
 
